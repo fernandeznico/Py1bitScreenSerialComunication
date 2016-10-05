@@ -18,7 +18,7 @@ class UARTConection():
 		
 		for pos in range( byte_size ):
 			#data[pos] = self.socket.read()
-			data[pos] = struct.unpack('B', self.socket.read())[0]
+			data[pos] = struct.unpack('B', self.socket.read() )[0]
 		
 		return data
 		
@@ -34,6 +34,8 @@ class Screen( threading.Thread ):
 				  pixel_size = 8 ,
 				  pixel_color = "black" ,
 				  background = "white" ):
+		
+		self.buff = {}
 		
 		self.width = width
 		self.height = height
@@ -67,15 +69,28 @@ class Screen( threading.Thread ):
 		
 	def CreatePixel( self , x , y ):
 		
+		if (x,y) in self.buff:
+			return
+		
 		real_x = (x * self.pixel_size) + 3 # Pixel can see from (3,3) to (real_width,real_height)
 		real_y = (y * self.pixel_size) + 3 # Pixel can see from (3,3) to (real_width,real_height)
 		
-		self.screen.create_rectangle( real_x ,
-									  real_y ,
-									  real_x + self.pixel_size ,
-									  real_y + self.pixel_size ,
-									  fill = self.pixel_color ,
-									  outline = self.pixel_color )
+		rect = self.screen.create_rectangle( real_x ,
+											 real_y ,
+											 real_x + self.pixel_size ,
+											 real_y + self.pixel_size ,
+											 fill = self.pixel_color ,
+											 outline = self.pixel_color )
+		
+		self.buff[(x,y)] = rect
+		
+	def ErasePixel( self , x , y ):
+		
+		if (x,y) not in self.buff:
+			return
+		
+		self.screen.delete( self.buff[(x,y)] )
+		del self.buff[(x,y)]
 		
 	def Clear( self ):
 		
@@ -97,7 +112,7 @@ class Screen( threading.Thread ):
 		if len(vect) < packs:
 			print( "Screen size: Fault" )
 		
-		self.Clear()
+		#self.Clear()
 		
 		x = 0
 		y = 0
@@ -105,28 +120,34 @@ class Screen( threading.Thread ):
 			for i in reversed(range( 0 , pack_size )): # Read bit7 first (left to right)
 				
 				if (1<<i) & vectIte:
-					print( i , vectIte )
 					self.CreatePixel( x , y )
+				else:
+					self.ErasePixel( x , y )
 				
-				print([x,y])
 				x = x + 1
 				if x == self.width + 1 :
 					y = y + 1
 					x = 0
 		
+		self.screen.pack()
 		self.Update()
 
 try:
 	
-	width = 50
-	height = 50
-	pixel_size = 5
-	
+	pixel_size = 20
+	width = int( 1366 / pixel_size )
+	height = int( 700 / pixel_size )
+	screen_pixel_size = width * height
+	if screen_pixel_size % 8 != 0:
+		recive_size = int(screen_pixel_size / 8) + 1
+	else:
+		recive_size = int(screen_pixel_size / 8)
 	conect = UARTConection()
 	screen = Screen(width-1,height-1,pixel_size)
+	
 	while True:
-		recive = conect.ReadBits(int((width*height)/8))
-		print( recive )
+		recive = conect.ReadBits(recive_size)
+		#~ print(recive)
 		screen.Show(recive)
 	
 except RuntimeError:
