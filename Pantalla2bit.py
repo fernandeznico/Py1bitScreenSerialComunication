@@ -131,7 +131,7 @@ try:
 	
 except RuntimeError:
 	
-	print("La pantalla fue cerrada")
+	print("The screen is closed")
 	
 finally:
 	
