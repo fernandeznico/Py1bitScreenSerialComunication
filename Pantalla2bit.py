@@ -61,7 +61,7 @@ class Screen( threading.Thread ):
 		
 	def run( self ):
 		
-		self.window.mainloop()
+		#~ self.window.mainloop()
 		
 	def callback(self): # Thread
 		
@@ -134,9 +134,9 @@ class Screen( threading.Thread ):
 				if x == self.width + 1 :
 					y = y + 1
 					x = 0
-		
-		self.screen.pack()
-		self.Update()
+		#~ 
+		#~ self.screen.pack()
+		#~ self.Update()
 
 try:
 	
