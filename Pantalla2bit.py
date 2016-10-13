@@ -7,10 +7,9 @@ import threading
 
 class UARTConection():
 	
-	def __init__( self , port = 'COM4' , baudrate = 9600 ):
+	def __init__( self , port = 'COM4' , baudrate = 115200 ):
 		
-		self.socket = serial.Serial(port)
-		self.socket.baudrate = baudrate
+		self.socket = serial.Serial( port = port , baudrate = baudrate )
 		
 	def ReadBits( self , byte_size ):
 		
@@ -43,11 +42,6 @@ class Screen( threading.Thread ):
 		self.pixel_color = pixel_color
 		self.background = background
 		
-		threading.Thread.__init__( self )
-		self.start()
-		
-	def run( self ):
-		
 		self.window = tkinter.Tk()
 		# Thread
 		self.window.protocol( "WM_DELETE_WINDOW" , self.callback )
@@ -60,7 +54,13 @@ class Screen( threading.Thread ):
 									  height = self.real_height ,
 									  width = self.real_width )
 		self.screen.pack()
-		#self.window.update()
+		self.window.update()
+		
+		threading.Thread.__init__( self )
+		self.start()
+		
+	def run( self ):
+		
 		self.window.mainloop()
 		
 	def callback(self): # Thread
@@ -70,6 +70,12 @@ class Screen( threading.Thread ):
 	def CreatePixel( self , x , y ):
 		
 		if (x,y) in self.buff:
+			return
+		
+		if x > self.width:
+			return
+		
+		if y > self.height:
 			return
 		
 		real_x = (x * self.pixel_size) + 3 # Pixel can see from (3,3) to (real_width,real_height)
@@ -134,9 +140,11 @@ class Screen( threading.Thread ):
 
 try:
 	
-	pixel_size = 20
-	width = int( 1366 / pixel_size )
-	height = int( 700 / pixel_size )
+	pixel_size = 80
+	#~ width = int( 1366 / pixel_size ) # 68
+	#~ height = int( 700 / pixel_size ) # 35
+	width = 5
+	height = 5
 	screen_pixel_size = width * height
 	if screen_pixel_size % 8 != 0:
 		recive_size = int(screen_pixel_size / 8) + 1
