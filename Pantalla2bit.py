@@ -5,6 +5,9 @@ import numpy as np
 import struct
 import threading
 
+import time
+tiempo = 0
+
 class UARTConection():
 	
 	def __init__( self , port = 'COM4' , baudrate = 115200 ):
@@ -61,8 +64,8 @@ class Screen( threading.Thread ):
 		
 	def run( self ):
 		
-		#~ self.window.mainloop()
-		return
+		time.sleep(5)
+		self.window.mainloop()
 		
 	def callback(self): # Thread
 		
@@ -138,14 +141,19 @@ class Screen( threading.Thread ):
 		
 		self.screen.pack()
 		self.Update()
+		
+		#Tiempo entre pantallas:
+		global tiempo
+		print(time.time() - tiempo)
+		tiempo = time.time()
 
 try:
 	
-	pixel_size = 80
-	#~ width = int( 1366 / pixel_size ) # 68
-	#~ height = int( 700 / pixel_size ) # 35
-	width = 5
-	height = 5
+	pixel_size = 20
+	width = int( 1366 / pixel_size ) # 68
+	height = int( 700 / pixel_size ) # 35
+	#~ width = 5
+	#~ height = 5
 	screen_pixel_size = width * height
 	if screen_pixel_size % 8 != 0:
 		recive_size = int(screen_pixel_size / 8) + 1
