@@ -5,9 +5,6 @@ import numpy as np
 import struct
 import threading
 
-import time
-tiempo = 0
-
 class UARTConection():
 	
 	def __init__( self , port = 'COM4' , baudrate = 115200 ):
@@ -19,8 +16,10 @@ class UARTConection():
 		data = np.zeros( (byte_size) , dtype=np.uint8 )
 		
 		for pos in range( byte_size ):
-			#data[pos] = self.socket.read()
-			data[pos] = struct.unpack('B', self.socket.read() )[0]
+			read = self.socket.read()
+			if read == b'':
+				return data
+			data[pos] = struct.unpack('B', read )[0]
 		
 		return data
 		
@@ -28,7 +27,7 @@ class UARTConection():
 		
 		self.socket.close()
 
-class Screen( threading.Thread ):
+class Screen():
 	
 	def __init__( self ,
 				  width = 100 ,
@@ -46,8 +45,6 @@ class Screen( threading.Thread ):
 		self.background = background
 		
 		self.window = tkinter.Tk()
-		# Thread
-		self.window.protocol( "WM_DELETE_WINDOW" , self.callback )
 		# Pixel can see from (3,3) to (real_width,real_height)
 		self.real_width = self.width * self.pixel_size + self.pixel_size + 3
 		# Pixel can see from (3,3) to (real_width,real_height)
@@ -58,18 +55,6 @@ class Screen( threading.Thread ):
 									  width = self.real_width )
 		self.screen.pack()
 		self.window.update()
-		
-		threading.Thread.__init__( self )
-		self.start()
-		
-	def run( self ):
-		
-		time.sleep(5)
-		self.window.mainloop()
-		
-	def callback(self): # Thread
-		
-		self.window.quit()
 		
 	def CreatePixel( self , x , y ):
 		
@@ -142,34 +127,105 @@ class Screen( threading.Thread ):
 		self.screen.pack()
 		self.Update()
 		
-		#Tiempo entre pantallas:
-		global tiempo
-		print(time.time() - tiempo)
-		tiempo = time.time()
+	def After_SetSecondsDilay( self , seconds_dilay ):
+		
+		self.seconds_dilay = seconds_dilay
+		
+	def After( self , function ):
+		
+		try:
+			
+			self.screen.after( self.seconds_dilay , function )
+			
+		except AttributeError:
+			
+			self.screen.after( 1 , function )
+		
+	def Loop( self ):
+		
+		self.screen.mainloop()
+
+class UARTConection_Screen():
+	
+	def __init__( self , conection , screen ):
+		
+		self.uartConection = conection
+		self.screen = screen
+		
+		screen_pixel_size = (self.screen.width + 1) * (self.screen.height + 1)
+		if screen_pixel_size % 8 != 0:
+			self.recive_size = int(screen_pixel_size / 8) + 1
+		else:
+			self.recive_size = int(screen_pixel_size / 8)
+		
+	def Loop( self , seconds_dilay ):
+		
+		screen.After_SetSecondsDilay( seconds_dilay )
+		
+		self.screen.After( self.Recive_and_show )
+		
+	def PrintScreen( self , packScreen , fileName='none' ):
+		
+		try:
+			
+			sys_stdout = sys.stdout
+			output = open( fileName , 'w' )
+			if fileName != 'none':
+				sys.stdout = output
+			
+			counter = 0
+			
+			for itePackScreen in packScreen:
+				
+				for pos in reversed(range(8)):
+					
+					if( itePackScreen & (1 << pos) ):
+						sys.stdout.write( '1' )
+					else:
+						sys.stdout.write( '0' )
+					
+					counter = counter + 1
+					if counter > (self.screen.width + 1):
+						sys.stdout.write( '\n' )
+						sys.stdout.flush()
+						counter = 0
+			
+		finally:
+			
+			sys.stdout = sys_stdout
+			output.close()
+		
+	def Recive_and_show( self ):
+		
+		try:
+			
+			recive = self.uartConection.ReadBits( self.recive_size )
+			
+			#~ self.PrintScreen( recive , 'Screen.txt' )
+			
+			self.screen.Show(recive)
+			
+		except RuntimeError:
+			print("The screen is closed")
+		
+		finally:
+			self.screen.After( self.Recive_and_show )
+
 
 try:
+	
+	conect = UARTConection()
 	
 	pixel_size = 20
 	width = int( 1366 / pixel_size ) # 68
 	height = int( 700 / pixel_size ) # 35
 	#~ width = 5
 	#~ height = 5
-	screen_pixel_size = width * height
-	if screen_pixel_size % 8 != 0:
-		recive_size = int(screen_pixel_size / 8) + 1
-	else:
-		recive_size = int(screen_pixel_size / 8)
-	conect = UARTConection()
-	screen = Screen(width-1,height-1,pixel_size)
+	screen = Screen( width-1 , height-1 , pixel_size )
 	
-	while True:
-		recive = conect.ReadBits(recive_size)
-		#~ print(recive)
-		screen.Show(recive)
-	
-except RuntimeError:
-	
-	print("The screen is closed")
+	intercomunicator = UARTConection_Screen( conect , screen )
+	intercomunicator.Loop( 1 );
+	screen.Loop()
 	
 finally:
 	
