@@ -11,7 +11,7 @@ class UARTConection():
 		
 		self.socket = serial.Serial( port = port , baudrate = baudrate )
 		
-	def ReadBits( self , byte_size ):
+	def ReadBytes( self , byte_size ):
 		
 		data = np.zeros( (byte_size) , dtype=np.uint8 )
 		
@@ -127,25 +127,11 @@ class Screen():
 		self.screen.pack()
 		self.Update()
 		
-	def After_SetSecondsDilay( self , seconds_dilay ):
-		
-		self.seconds_dilay = seconds_dilay
-		
-	def After( self , function ):
-		
-		try:
-			
-			self.screen.after( self.seconds_dilay , function )
-			
-		except AttributeError:
-			
-			self.screen.after( 1 , function )
-		
 	def Loop( self ):
 		
 		self.screen.mainloop()
 
-class UARTConection_Screen():
+class UARTConection_Screen( threading.Thread ):
 	
 	def __init__( self , conection , screen ):
 		
@@ -158,11 +144,15 @@ class UARTConection_Screen():
 		else:
 			self.recive_size = int(screen_pixel_size / 8)
 		
-	def Loop( self , seconds_dilay ):
+	def Loop( self ):
 		
-		screen.After_SetSecondsDilay( seconds_dilay )
+		threading.Thread.__init__( self )
+		self.start()
 		
-		self.screen.After( self.Recive_and_show )
+	def run( self ):
+		
+		while True:
+			self.Recive_and_show()
 		
 	def PrintScreen( self , packScreen , fileName='none' ):
 		
@@ -199,17 +189,12 @@ class UARTConection_Screen():
 		
 		try:
 			
-			recive = self.uartConection.ReadBits( self.recive_size )
-			
+			recive = self.uartConection.ReadBytes( self.recive_size )
 			#~ self.PrintScreen( recive , 'Screen.txt' )
-			
 			self.screen.Show(recive)
 			
 		except RuntimeError:
 			print("The screen is closed")
-		
-		finally:
-			self.screen.After( self.Recive_and_show )
 
 
 try:
@@ -224,7 +209,7 @@ try:
 	screen = Screen( width-1 , height-1 , pixel_size )
 	
 	intercomunicator = UARTConection_Screen( conect , screen )
-	intercomunicator.Loop( 1 );
+	intercomunicator.Loop();
 	screen.Loop()
 	
 finally:
